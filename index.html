@@ -64,8 +64,11 @@
                     <p class="text-[10px] text-gray-500 font-mono uppercase tracking-[0.2em]">Registry</p>
                 </div>
             </div>
+            
             <div id="auth-container" class="flex items-center gap-4">
-                <div class="h-9 w-24 bg-white/5 rounded-lg skeleton"></div>
+                <button onclick="toggleModal('login-modal', true)" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform">
+                    Sign In
+                </button>
             </div>
         </div>
     </nav>
@@ -96,11 +99,6 @@
 
         <div id="components-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 min-h-[300px]">
             <div class="glass-card rounded-2xl h-80 flex flex-col p-6 animate-pulse">
-                <div class="h-40 w-full rounded-xl skeleton mb-4"></div>
-                <div class="h-6 w-3/4 rounded-md skeleton mb-2"></div>
-                <div class="h-4 w-1/2 rounded-md skeleton"></div>
-            </div>
-             <div class="glass-card rounded-2xl h-80 flex flex-col p-6 animate-pulse">
                 <div class="h-40 w-full rounded-xl skeleton mb-4"></div>
                 <div class="h-6 w-3/4 rounded-md skeleton mb-2"></div>
                 <div class="h-4 w-1/2 rounded-md skeleton"></div>
@@ -157,20 +155,33 @@
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>
         // ==========================================
-        // ⚡ CONFIGURATION (Using Vercel Swaps)
+        // ⚡ SAFE CONFIGURATION
         // ==========================================
         const SUPABASE_URL = '__SUPABASE_URL__'; 
         const SUPABASE_KEY = '__SUPABASE_KEY__';
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let supabase = null;
+        let isDemoMode = true; // Default to Demo Mode so buttons ALWAYS show
+
+        try {
+            // Check if keys are valid (Starts with https)
+            if (SUPABASE_URL.startsWith('https')) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                isDemoMode = false;
+            } else {
+                console.warn("NyxUI: No API Keys detected. Running in Demo Mode.");
+            }
+        } catch (e) {
+            console.error("NyxUI: Client init failed, switching to Demo Mode.");
+        }
+
         let user = null;
         let activeFilter = 'all';
 
-        // --- MOCK DATA (Fallback if DB fails) ---
+        // --- MOCK DATA (Fallback) ---
         const DEMO_DATA = [
             { id: 1, title: 'Neon Button', type: 'element', code: '<button class="px-6 py-3 bg-black text-white rounded-lg border border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]">Click Me</button>', profiles: { username: 'NyxCore' } },
             { id: 2, title: 'Glass Card', type: 'element', code: '<div class="p-6 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 text-white">Glassmorphism</div>', profiles: { username: 'Fahad' } },
-            { id: 3, title: 'Gradient Text', type: 'text', code: '<h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-violet-500">Hello World</h1>', profiles: { username: 'Dev' } },
         ];
 
         async function init() {
@@ -178,24 +189,29 @@
             lucide.createIcons();
             initParticles();
 
-            // 1. Check Auth (Fail silently)
-            try {
-                const { data } = await supabase.auth.getSession();
-                user = data.session?.user || null;
-            } catch(e) { console.log("Auth skipped (Demo Mode)"); }
-            renderAuth();
+            // 1. Auth Check
+            if (!isDemoMode && supabase) {
+                try {
+                    const { data } = await supabase.auth.getSession();
+                    user = data.session?.user || null;
+                    
+                    supabase.auth.onAuthStateChange((_e, session) => {
+                        user = session?.user || null;
+                        renderAuth();
+                    });
+                } catch(e) { console.log("Auth error, using demo user state"); }
+            }
             
-            supabase.auth.onAuthStateChange((_e, session) => {
-                user = session?.user || null;
-                renderAuth();
-            });
+            // Force Render Auth buttons immediately
+            renderAuth();
 
-            // 2. Fetch Data (with Auto-Fallback)
+            // 2. Fetch Data
             fetchData();
         }
 
         function renderAuth() {
             const container = document.getElementById('auth-container');
+            // If logged in OR just demo simulating login
             if(user) {
                 container.innerHTML = `<button onclick="toggleModal('upload-modal', true)" class="hidden md:flex items-center gap-2 bg-purple-600/10 border border-purple-500/20 hover:bg-purple-600 hover:border-purple-500 text-purple-300 hover:text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all"><i data-lucide="plus" class="w-4 h-4"></i> Create</button>`;
             } else {
@@ -206,34 +222,29 @@
 
         async function fetchData() {
             const grid = document.getElementById('components-grid');
-            const search = document.getElementById('search-input').value;
+            
+            // If in Demo Mode, just show demo data
+            if(isDemoMode) {
+                renderGrid(DEMO_DATA);
+                return;
+            }
 
             try {
-                // Try to fetch real data
+                // Try real fetch
                 let query = supabase.from('components').select('*, profiles(username, avatar_url)').order('created_at', { ascending: false });
                 if (activeFilter !== 'all') query = query.eq('type', activeFilter);
-                if (search) query = query.ilike('title', `%${search}%`);
-
                 const { data, error } = await query;
                 
                 if (error || !data) throw new Error("DB Error");
-                
-                // If real data exists, show it
-                if (data.length > 0) renderGrid(data);
-                else renderGrid([]); // Show empty state if DB is working but empty
+                renderGrid(data.length > 0 ? data : []);
 
             } catch (err) {
-                console.warn("Falling back to Demo Data:", err);
-                // IF DB FAILS, SHOW DEMO DATA IMMEDIATELY
-                // No error message, no broken site.
-                const filteredDemo = DEMO_DATA.filter(d => activeFilter === 'all' || d.type === activeFilter);
-                renderGrid(filteredDemo);
+                renderGrid(DEMO_DATA); // Fallback
             }
         }
 
         function renderGrid(data) {
             const grid = document.getElementById('components-grid');
-            
             if (data.length === 0) {
                 grid.innerHTML = `<div class="col-span-full text-center py-20 text-gray-500">No components found.</div>`;
                 return;
@@ -265,13 +276,10 @@
         }
 
         // --- ACTIONS ---
-        async function upload(e) {
-            e.preventDefault();
-            // ... (Same upload logic) ...
+        async function signInWithGithub() { 
+            if(isDemoMode) { alert("Demo Mode: Auth Disabled"); return; }
+            await supabase.auth.signInWithOAuth({ provider: 'github' }); 
         }
-        
-        async function signInWithGithub() { await supabase.auth.signInWithOAuth({ provider: 'github' }); }
-        async function signOut() { await supabase.auth.signOut(); window.location.reload(); }
 
         // --- UTILS ---
         function toggleModal(id, show) {
