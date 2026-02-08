@@ -40,7 +40,6 @@
 
         .text-gradient { background: linear-gradient(135deg, #ffffff 0%, #a855f7 50%, #6366f1 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        /* Skeleton Shimmer Effect (Replaces Loader) */
         .skeleton {
             background: #111;
             background-image: linear-gradient(to right, #111 0%, #1a1a1a 20%, #111 40%, #111 100%);
@@ -65,8 +64,8 @@
                 </div>
             </div>
             
-            <div id="auth-container" class="flex items-center gap-4">
-                <button onclick="toggleModal('login-modal', true)" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform">
+            <div id="auth-container" class="flex items-center gap-4 relative z-50">
+                <button onclick="handleAuthClick()" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.2)] cursor-pointer relative z-50">
                     Sign In
                 </button>
             </div>
@@ -103,13 +102,7 @@
                 <div class="h-6 w-3/4 rounded-md skeleton mb-2"></div>
                 <div class="h-4 w-1/2 rounded-md skeleton"></div>
             </div>
-             <div class="glass-card rounded-2xl h-80 flex flex-col p-6 animate-pulse">
-                <div class="h-40 w-full rounded-xl skeleton mb-4"></div>
-                <div class="h-6 w-3/4 rounded-md skeleton mb-2"></div>
-                <div class="h-4 w-1/2 rounded-md skeleton"></div>
-            </div>
         </div>
-
     </main>
 
     <footer class="border-t border-white/5 bg-[#010101] py-12 relative z-10">
@@ -121,7 +114,7 @@
     <div id="upload-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
         <div class="absolute inset-0 bg-black/80 backdrop-blur-md" onclick="toggleModal('upload-modal', false)"></div>
         <div class="glass-card w-full max-w-2xl rounded-3xl p-8 relative transform scale-95 transition-transform duration-300 shadow-2xl shadow-purple-900/20">
-            <button onclick="toggleModal('upload-modal', false)" class="absolute top-6 right-6 text-gray-500 hover:text-white"><i data-lucide="x"></i></button>
+            <button onclick="toggleModal('upload-modal', false)" class="absolute top-6 right-6 text-gray-500 hover:text-white cursor-pointer z-50"><i data-lucide="x"></i></button>
             <h2 class="text-2xl font-bold text-white mb-6">Upload Component</h2>
             <form id="upload-form" class="space-y-5">
                 <div class="grid grid-cols-2 gap-5">
@@ -133,7 +126,7 @@
                     </select>
                 </div>
                 <textarea id="comp-code" required placeholder="HTML Code" class="w-full h-48 bg-[#050505] border border-white/10 rounded-xl p-4 font-mono text-xs focus:border-purple-500 outline-none resize-none text-gray-300"></textarea>
-                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-xl">Publish Component</button>
+                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-xl cursor-pointer">Publish Component</button>
             </form>
         </div>
     </div>
@@ -141,15 +134,15 @@
     <div id="login-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
         <div class="absolute inset-0 bg-black/80 backdrop-blur-md" onclick="toggleModal('login-modal', false)"></div>
         <div class="glass-card w-full max-w-sm rounded-3xl p-8 relative text-center transform scale-95 transition-transform duration-300">
-            <button onclick="toggleModal('login-modal', false)" class="absolute top-4 right-4 text-gray-500 hover:text-white"><i data-lucide="x"></i></button>
+            <button onclick="toggleModal('login-modal', false)" class="absolute top-4 right-4 text-gray-500 hover:text-white cursor-pointer z-50"><i data-lucide="x"></i></button>
             <h2 class="text-3xl font-bold mb-8">Access Nyx</h2>
-            <button onclick="signInWithGithub()" class="w-full bg-white text-black font-bold py-4 rounded-xl flex items-center justify-center gap-3"><i data-lucide="github" class="w-5 h-5"></i> Continue with GitHub</button>
+            <button onclick="signInWithGithub()" class="w-full bg-white text-black font-bold py-4 rounded-xl flex items-center justify-center gap-3 cursor-pointer hover:bg-gray-200 transition-colors"><i data-lucide="github" class="w-5 h-5"></i> Continue with GitHub</button>
         </div>
     </div>
 
     <div id="toast" class="fixed bottom-6 right-6 bg-[#0A0A0A] border border-white/10 text-white px-6 py-4 rounded-xl shadow-2xl translate-y-32 transition-transform duration-300 z-[150] flex items-center gap-4">
         <div class="p-2 bg-green-500/20 rounded-lg text-green-500"><i data-lucide="check" class="w-5 h-5"></i></div>
-        <div><h4 class="font-bold text-sm">Success</h4><p class="text-xs text-gray-500">Action completed</p></div>
+        <div><h4 class="font-bold text-sm" id="toast-title">Success</h4><p class="text-xs text-gray-500" id="toast-msg">Action completed</p></div>
     </div>
 
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
@@ -161,24 +154,24 @@
         const SUPABASE_KEY = '__SUPABASE_KEY__';
 
         let supabase = null;
-        let isDemoMode = true; // Default to Demo Mode so buttons ALWAYS show
+        let isDemoMode = true;
 
+        // Try initializing Supabase safely
         try {
-            // Check if keys are valid (Starts with https)
             if (SUPABASE_URL.startsWith('https')) {
                 supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 isDemoMode = false;
             } else {
-                console.warn("NyxUI: No API Keys detected. Running in Demo Mode.");
+                console.log("NyxUI: Running in Demo Mode (No Keys)");
             }
         } catch (e) {
-            console.error("NyxUI: Client init failed, switching to Demo Mode.");
+            console.log("NyxUI: Init failed, defaulting to Demo Mode.");
         }
 
         let user = null;
         let activeFilter = 'all';
 
-        // --- MOCK DATA (Fallback) ---
+        // --- MOCK DATA ---
         const DEMO_DATA = [
             { id: 1, title: 'Neon Button', type: 'element', code: '<button class="px-6 py-3 bg-black text-white rounded-lg border border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]">Click Me</button>', profiles: { username: 'NyxCore' } },
             { id: 2, title: 'Glass Card', type: 'element', code: '<div class="p-6 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 text-white">Glassmorphism</div>', profiles: { username: 'Fahad' } },
@@ -199,45 +192,47 @@
                         user = session?.user || null;
                         renderAuth();
                     });
-                } catch(e) { console.log("Auth error, using demo user state"); }
+                } catch(e) { console.log("Auth skipped"); }
             }
             
-            // Force Render Auth buttons immediately
             renderAuth();
-
-            // 2. Fetch Data
             fetchData();
         }
 
         function renderAuth() {
             const container = document.getElementById('auth-container');
-            // If logged in OR just demo simulating login
             if(user) {
-                container.innerHTML = `<button onclick="toggleModal('upload-modal', true)" class="hidden md:flex items-center gap-2 bg-purple-600/10 border border-purple-500/20 hover:bg-purple-600 hover:border-purple-500 text-purple-300 hover:text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all"><i data-lucide="plus" class="w-4 h-4"></i> Create</button>`;
+                container.innerHTML = `<button onclick="toggleModal('upload-modal', true)" class="hidden md:flex items-center gap-2 bg-purple-600/10 border border-purple-500/20 hover:bg-purple-600 hover:border-purple-500 text-purple-300 hover:text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer"><i data-lucide="plus" class="w-4 h-4"></i> Create</button>`;
             } else {
-                container.innerHTML = `<button onclick="toggleModal('login-modal', true)" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform">Sign In</button>`;
+                // If demo mode, clicking Sign In shows alert
+                container.innerHTML = `<button onclick="handleAuthClick()" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform cursor-pointer">Sign In</button>`;
             }
             lucide.createIcons();
+        }
+
+        function handleAuthClick() {
+            if (isDemoMode) {
+                alert("You are in Demo Mode. Connect Vercel Keys to Sign In.");
+            } else {
+                toggleModal('login-modal', true);
+            }
         }
 
         async function fetchData() {
             const grid = document.getElementById('components-grid');
             
-            // If in Demo Mode, just show demo data
             if(isDemoMode) {
                 renderGrid(DEMO_DATA);
                 return;
             }
 
             try {
-                // Try real fetch
                 let query = supabase.from('components').select('*, profiles(username, avatar_url)').order('created_at', { ascending: false });
                 if (activeFilter !== 'all') query = query.eq('type', activeFilter);
                 const { data, error } = await query;
                 
                 if (error || !data) throw new Error("DB Error");
                 renderGrid(data.length > 0 ? data : []);
-
             } catch (err) {
                 renderGrid(DEMO_DATA); // Fallback
             }
@@ -265,7 +260,7 @@
                             <span class="text-[10px] font-mono border border-white/10 bg-white/5 px-2 py-1 rounded text-purple-400 uppercase tracking-wider">${item.type}</span>
                         </div>
                         <div class="mt-auto pt-4 border-t border-white/5 flex gap-2">
-                            <button onclick="copyCode('${encodeURIComponent(item.code)}')" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all">
+                            <button onclick="copyCode('${encodeURIComponent(item.code)}')" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer">
                                 <i data-lucide="copy" class="w-3 h-3"></i> Copy JSX
                             </button>
                         </div>
@@ -275,21 +270,36 @@
             lucide.createIcons();
         }
 
-        // --- ACTIONS ---
         async function signInWithGithub() { 
-            if(isDemoMode) { alert("Demo Mode: Auth Disabled"); return; }
+            if(isDemoMode) return;
             await supabase.auth.signInWithOAuth({ provider: 'github' }); 
         }
 
         // --- UTILS ---
         function toggleModal(id, show) {
             const el = document.getElementById(id);
-            if(show) { el.classList.remove('opacity-0', 'pointer-events-none'); el.querySelector('.glass-card').classList.add('scale-100'); } 
-            else { el.classList.add('opacity-0', 'pointer-events-none'); el.querySelector('.glass-card').classList.remove('scale-100'); }
+            if(show) { 
+                el.classList.remove('opacity-0', 'pointer-events-none'); 
+                el.querySelector('.glass-card').classList.add('scale-100'); 
+            } else { 
+                el.classList.add('opacity-0', 'pointer-events-none'); 
+                el.querySelector('.glass-card').classList.remove('scale-100'); 
+            }
         }
-        function copyCode(code) { navigator.clipboard.writeText(decodeURIComponent(code)); }
+        function copyCode(code) { 
+            navigator.clipboard.writeText(decodeURIComponent(code));
+            showToast("Success", "Code copied to clipboard");
+        }
         
-        // --- BACKGROUND ---
+        function showToast(title, msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-title').innerText = title;
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.remove('translate-y-32');
+            setTimeout(() => t.classList.add('translate-y-32'), 3000);
+        }
+
+        // --- PARTICLES ---
         function initParticles() {
             const canvas = document.getElementById('neural-canvas');
             const ctx = canvas.getContext('2d');
@@ -312,9 +322,8 @@
             animate();
         }
 
-        // Listeners
         const filters = ['all', 'element', 'navigation', 'loader'];
-        document.getElementById('filter-container').innerHTML = filters.map(f => `<button onclick="activeFilter='${f}';fetchData()" class="px-5 py-2.5 rounded-xl text-xs font-bold uppercase transition-all border border-white/5 bg-[#0A0A0A] text-gray-500 hover:text-white hover:border-purple-500/50">${f}</button>`).join('');
+        document.getElementById('filter-container').innerHTML = filters.map(f => `<button onclick="activeFilter='${f}';fetchData()" class="px-5 py-2.5 rounded-xl text-xs font-bold uppercase transition-all border border-white/5 bg-[#0A0A0A] text-gray-500 hover:text-white hover:border-purple-500/50 cursor-pointer">${f}</button>`).join('');
         document.getElementById('search-input').addEventListener('input', fetchData);
         
         init();
