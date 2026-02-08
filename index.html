@@ -34,7 +34,9 @@
         }
         .glass-card:hover { border-color: rgba(168, 85, 247, 0.4); transform: translateY(-5px); }
         .text-gradient { background: linear-gradient(135deg, #ffffff 0%, #a855f7 50%, #6366f1 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .z-top { z-index: 9999 !important; }
+        
+        /* Force pointer events for buttons */
+        button { cursor: pointer !important; position: relative; z-index: 50; }
     </style>
 </head>
 <body class="antialiased">
@@ -52,7 +54,7 @@
             </div>
             
             <div id="auth-container" class="flex items-center gap-4 relative z-50">
-                <button onclick="openModal('login-modal')" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform shadow-lg cursor-pointer">
+                <button id="login-btn" onclick="openModal('login-modal')" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform shadow-lg cursor-pointer z-50">
                     Team Access
                 </button>
             </div>
@@ -102,14 +104,11 @@
         <div class="absolute inset-0 bg-black/80 backdrop-blur-md cursor-pointer" onclick="closeModal('login-modal')"></div>
         <div class="glass-card w-full max-w-sm rounded-3xl p-8 relative text-center z-10">
             <button onclick="closeModal('login-modal')" class="absolute top-4 right-4 text-gray-500 hover:text-white cursor-pointer"><i data-lucide="x"></i></button>
-            
             <div class="w-16 h-16 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-purple-900/30">
                 <i data-lucide="shield-check" class="w-8 h-8 text-white"></i>
             </div>
-
             <h2 class="text-2xl font-bold mb-2">Team Access</h2>
             <p class="text-gray-500 text-xs mb-6 uppercase tracking-widest">Authorized Personnel Only</p>
-            
             <form onsubmit="handleCustomLogin(event)" class="space-y-4">
                 <div class="text-left">
                     <label class="text-[10px] uppercase font-bold text-gray-500 ml-1">NyX Mot ID</label>
@@ -155,24 +154,53 @@
 
     <script>
         // ==========================================
-        // 🔒 CONFIGURATION
+        // 🛠️ UTILS FIRST (Prevents "Not Defined" Errors)
         // ==========================================
-        // Vercel swaps these automatically
+        function openModal(id) { 
+            const el = document.getElementById(id);
+            if(el) el.classList.remove('hidden'); 
+        }
+        function closeModal(id) { 
+            const el = document.getElementById(id);
+            if(el) el.classList.add('hidden'); 
+        }
+        function copyCode(code) { 
+            navigator.clipboard.writeText(decodeURIComponent(code)); 
+            showToast("Copied", "Code in clipboard"); 
+        }
+        function showToast(title, msg, isError = false) {
+            const t = document.getElementById('toast');
+            if(!t) return;
+            document.getElementById('toast-title').innerText = title;
+            document.getElementById('toast-msg').innerText = msg;
+            const icon = t.querySelector('i');
+            if(isError) { icon.setAttribute('data-lucide', 'alert-circle'); t.querySelector('div').className="p-2 bg-red-500/20 rounded-lg text-red-500"; }
+            else { icon.setAttribute('data-lucide', 'check'); t.querySelector('div').className="p-2 bg-green-500/20 rounded-lg text-green-500"; }
+            lucide.createIcons();
+            t.classList.remove('translate-y-32');
+            setTimeout(() => t.classList.add('translate-y-32'), 3000);
+        }
+
+        // ==========================================
+        // 🔒 CONFIGURATION (CRASH GUARD ENABLED)
+        // ==========================================
         const TEAM_DATA_STR = '__TEAM_DATA__'; 
         const SUPABASE_URL = '__SUPABASE_URL__'; 
         const SUPABASE_KEY = '__SUPABASE_KEY__';
 
         let supabase = null;
         let isDemo = true;
-        let currentUser = null; // Store currently logged in dev name
+        let currentUser = null;
 
-        // 1. Initialize Supabase
+        // 1. Safe Supabase Init
         try {
             if (SUPABASE_URL.startsWith('https')) {
                 supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 isDemo = false;
+            } else {
+                console.warn("Keys missing - running in offline mode");
             }
-        } catch (e) { console.error("Init Error"); }
+        } catch (e) { console.error("Supabase Init Error", e); }
 
         // 2. Demo Data
         const DEMO_DATA = [
@@ -189,52 +217,52 @@
             fetchRealData();
         });
 
-        // 4. MULTI-USER LOGIN LOGIC
+        // 4. Login Logic (SAFE PARSE)
         function handleCustomLogin(e) {
             e.preventDefault();
             const inputUser = document.getElementById('nyx-id').value;
             const inputPass = document.getElementById('nyx-pass').value;
 
             try {
-                // Parse the JSON list from Vercel
-                // If it wasn't replaced, it might be the string literal "__TEAM_DATA__"
                 let teamList = [];
-                if (TEAM_DATA_STR.startsWith('[')) {
+                // CRASH GUARD: Check if the string is actually JSON before parsing
+                if (TEAM_DATA_STR.trim().startsWith('[')) {
                     teamList = JSON.parse(TEAM_DATA_STR);
+                } else {
+                    console.log("Config not loaded, checking dev bypass...");
                 }
                 
-                // Find matching user
+                // Real Check
                 const validUser = teamList.find(u => u.u === inputUser && u.p === inputPass);
 
                 if (validUser) {
                     const devName = validUser.u.split('@')[0];
                     localStorage.setItem('nyx_dev_user', devName);
-                    
                     currentUser = devName;
                     updateAuthUI();
                     closeModal('login-modal');
                     showToast("Access Granted", `Welcome, ${devName}`);
-                } else {
-                    // Demo fallback for preview deployments without keys
-                    if (inputUser === 'admin' && inputPass === 'nyx') {
-                        currentUser = 'DemoAdmin';
-                        updateAuthUI();
-                        closeModal('login-modal');
-                    } else {
-                        showToast("Access Denied", "Invalid Credentials", true);
-                    }
+                } 
+                // Local Dev Bypass (Remove this if you want strict security only)
+                else if (inputUser === 'admin' && inputPass === 'nyx') {
+                     localStorage.setItem('nyx_dev_user', 'Admin');
+                     currentUser = 'Admin';
+                     updateAuthUI();
+                     closeModal('login-modal');
+                     showToast("Access Granted", "Admin Bypass");
+                }
+                else {
+                    showToast("Access Denied", "Invalid Credentials", true);
                 }
             } catch (err) {
-                console.error(err);
+                console.error("Login Error:", err);
                 showToast("System Error", "Config Invalid", true);
             }
         }
 
         function checkSession() {
             const storedUser = localStorage.getItem('nyx_dev_user');
-            if (storedUser) {
-                currentUser = storedUser;
-            }
+            if (storedUser) currentUser = storedUser;
             updateAuthUI();
         }
 
@@ -251,36 +279,25 @@
                 container.innerHTML = `
                     <div class="flex items-center gap-3">
                         <span class="text-xs text-purple-400 font-mono hidden md:inline">${currentUser}</span>
-                        <button onclick="openModal('upload-modal')" class="bg-purple-600/10 border border-purple-500/20 text-purple-300 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer">
-                            <i data-lucide="plus" class="w-4 h-4"></i>
-                        </button>
-                        <button onclick="handleLogout()" class="bg-red-500/10 border border-red-500/20 text-red-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer">
-                            <i data-lucide="log-out" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-                `;
+                        <button onclick="openModal('upload-modal')" class="bg-purple-600/10 border border-purple-500/20 text-purple-300 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                        <button onclick="handleLogout()" class="bg-red-500/10 border border-red-500/20 text-red-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"><i data-lucide="log-out" class="w-4 h-4"></i></button>
+                    </div>`;
             } else {
                 container.innerHTML = `
-                    <button onclick="openModal('login-modal')" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform shadow-lg cursor-pointer">
-                        Team Access
-                    </button>
-                `;
+                    <button onclick="openModal('login-modal')" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform shadow-lg cursor-pointer">Team Access</button>`;
             }
             lucide.createIcons();
         }
 
-        // 5. Data Fetching
+        // 5. Data & Upload Logic
         async function fetchRealData() {
             if (!supabase) { renderGrid(DEMO_DATA); return; }
             try {
-                // Fetch from Supabase
                 const { data, error } = await supabase.from('components').select('*').order('created_at', { ascending: false });
                 if (!error && data.length > 0) {
                     currentData = data;
                     renderGrid(currentData);
-                } else {
-                    renderGrid(DEMO_DATA);
-                }
+                } else { renderGrid(DEMO_DATA); }
             } catch (e) { renderGrid(DEMO_DATA); }
         }
 
@@ -294,20 +311,12 @@
                     </div>
                     <div class="p-6 flex-1 flex flex-col">
                         <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <h3 class="font-bold text-white text-lg tracking-tight leading-none">${item.title}</h3>
-                                <p class="text-xs text-gray-500 mt-2 font-mono text-purple-400">${item.author_name || 'Team'}</p>
-                            </div>
+                            <div><h3 class="font-bold text-white text-lg tracking-tight leading-none">${item.title}</h3><p class="text-xs text-gray-500 mt-2 font-mono text-purple-400">${item.author_name || 'Team'}</p></div>
                             <span class="text-[10px] font-mono border border-white/10 bg-white/5 px-2 py-1 rounded text-gray-400 uppercase tracking-wider">${item.type}</span>
                         </div>
-                        <div class="mt-auto pt-4 border-t border-white/5 flex gap-2">
-                            <button onclick="copyCode('${encodeURIComponent(item.code)}')" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer">
-                                <i data-lucide="copy" class="w-3 h-3"></i> Copy JSX
-                            </button>
-                        </div>
+                        <div class="mt-auto pt-4 border-t border-white/5 flex gap-2"><button onclick="copyCode('${encodeURIComponent(item.code)}')" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer"><i data-lucide="copy" class="w-3 h-3"></i> Copy JSX</button></div>
                     </div>
-                </div>
-            `).join('');
+                </div>`).join('');
             lucide.createIcons();
         }
 
@@ -316,18 +325,10 @@
             else renderGrid(currentData.filter(d => d.type === type));
         }
 
-        // 6. Upload Logic
         async function handleUpload(e) {
             e.preventDefault();
             if (!currentUser) { showToast("Error", "Unauthorized", true); return; }
-            
-            if (!supabase) {
-                // If in demo/local mode (no supabase), pretend it worked
-                showToast("Demo Mode", "Upload Simulated!");
-                closeModal('upload-modal');
-                return;
-            }
-
+            if (!supabase) { showToast("Demo Mode", "Upload Simulated!"); closeModal('upload-modal'); return; }
             try {
                 const { error } = await supabase.from('components').insert({
                     title: document.getElementById('comp-title').value,
@@ -335,34 +336,15 @@
                     code: document.getElementById('comp-code').value,
                     author_name: currentUser
                 });
-
                 if(error) throw error;
                 showToast("Success", "Component Uploaded!");
                 closeModal('upload-modal');
                 e.target.reset();
                 fetchRealData();
-            } catch(err) {
-                showToast("Upload Failed", "DB Error", true);
-            }
+            } catch(err) { showToast("Upload Failed", "DB Error", true); }
         }
 
-        // 7. Utils & Visuals
-        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-        function copyCode(code) { navigator.clipboard.writeText(decodeURIComponent(code)); showToast("Copied", "Code in clipboard"); }
-        
-        function showToast(title, msg, isError = false) {
-            const t = document.getElementById('toast');
-            document.getElementById('toast-title').innerText = title;
-            document.getElementById('toast-msg').innerText = msg;
-            const icon = t.querySelector('i');
-            if(isError) { icon.setAttribute('data-lucide', 'alert-circle'); t.querySelector('div').className="p-2 bg-red-500/20 rounded-lg text-red-500"; }
-            else { icon.setAttribute('data-lucide', 'check'); t.querySelector('div').className="p-2 bg-green-500/20 rounded-lg text-green-500"; }
-            lucide.createIcons();
-            t.classList.remove('translate-y-32');
-            setTimeout(() => t.classList.add('translate-y-32'), 3000);
-        }
-
+        // 6. Particles
         function initParticles() {
             const canvas = document.getElementById('neural-canvas');
             const ctx = canvas.getContext('2d');
