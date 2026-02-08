@@ -6,7 +6,6 @@
     <title>NYX UI | The Motion Registry</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -17,8 +16,7 @@
                 extend: {
                     colors: { nyx: { bg: '#030303', surface: '#0A0A0A', accent: '#a855f7' } },
                     fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
-                    animation: { 'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite', 'shimmer': 'shimmer 2s linear infinite' },
-                    keyframes: { shimmer: { '0%': { backgroundPosition: '-1000px 0' }, '100%': { backgroundPosition: '1000px 0' } } }
+                    animation: { 'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
                 }
             }
         }
@@ -26,6 +24,8 @@
 
     <style>
         body { background-color: #030303; color: #ffffff; overflow-x: hidden; }
+        
+        /* Backgrounds */
         #canvas-container { position: fixed; inset: 0; z-index: -1; background: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #000000 100%); }
         .vignette { position: fixed; inset: 0; z-index: -1; background: radial-gradient(circle at center, transparent 0%, #030303 120%); pointer-events: none; }
         
@@ -34,19 +34,14 @@
             background: linear-gradient(180deg, rgba(20, 20, 20, 0.6) 0%, rgba(10, 10, 10, 0.8) 100%);
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: all 0.3s ease;
         }
-        .glass-card:hover { border-color: rgba(168, 85, 247, 0.4); box-shadow: 0 0 30px -10px rgba(168, 85, 247, 0.3); transform: translateY(-5px); }
-
+        .glass-card:hover { border-color: rgba(168, 85, 247, 0.4); transform: translateY(-5px); }
         .text-gradient { background: linear-gradient(135deg, #ffffff 0%, #a855f7 50%, #6366f1 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        .skeleton {
-            background: #111;
-            background-image: linear-gradient(to right, #111 0%, #1a1a1a 20%, #111 40%, #111 100%);
-            background-repeat: no-repeat;
-            background-size: 1000px 100%; 
-            animation: shimmer 2s infinite linear forwards;
-        }
+        /* Utility */
+        .cursor-pointer { cursor: pointer !important; }
+        .z-top { z-index: 9999 !important; }
     </style>
 </head>
 <body class="antialiased">
@@ -54,9 +49,9 @@
     <div id="canvas-container"><canvas id="neural-canvas"></canvas></div>
     <div class="vignette"></div>
 
-    <nav class="fixed w-full z-50 top-0 border-b border-white/5 bg-[#030303]/70 backdrop-blur-xl">
+    <nav class="fixed w-full z-50 top-0 border-b border-white/5 bg-[#030303]/80 backdrop-blur-xl">
         <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-            <div class="flex items-center gap-3 cursor-pointer group" onclick="window.scrollTo(0,0)">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="window.scrollTo(0,0)">
                 <div class="w-10 h-10 bg-gradient-to-br from-purple-600 to-indigo-700 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-inner border border-white/10">N</div>
                 <div>
                     <h1 class="font-bold text-lg tracking-tight leading-none text-white">NYX UI</h1>
@@ -64,8 +59,8 @@
                 </div>
             </div>
             
-            <div id="auth-container" class="flex items-center gap-4 relative z-50">
-                <button onclick="handleAuthClick()" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.2)] cursor-pointer relative z-50">
+            <div id="auth-container" class="flex items-center gap-4">
+                <button onclick="openModal('login-modal')" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform shadow-lg cursor-pointer">
                     Sign In
                 </button>
             </div>
@@ -74,7 +69,7 @@
 
     <main class="pt-36 pb-20 px-6 max-w-7xl mx-auto min-h-screen relative z-10">
         
-        <div class="text-center mb-24 relative" data-aos="fade-down" data-aos-duration="1000">
+        <div class="text-center mb-24 relative">
             <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/5 text-purple-300 text-xs font-mono mb-8 backdrop-blur-md">
                 <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span></span>
                 Live Database V2.0
@@ -87,22 +82,22 @@
             
             <div class="max-w-4xl mx-auto flex flex-col md:flex-row gap-4 relative z-20">
                 <div class="relative flex-1 group">
-                    <div class="relative flex items-center bg-[#0A0A0A] border border-white/10 rounded-2xl transition-all group-focus-within:border-purple-500/50">
-                        <i data-lucide="search" class="ml-5 w-5 h-5 text-gray-500 group-focus-within:text-purple-400 transition-colors"></i>
+                    <div class="relative flex items-center bg-[#0A0A0A] border border-white/10 rounded-2xl transition-all focus-within:border-purple-500/50">
+                        <i data-lucide="search" class="ml-5 w-5 h-5 text-gray-500"></i>
                         <input type="text" id="search-input" placeholder="Search components..." class="w-full bg-transparent py-4 pl-4 pr-4 text-white focus:outline-none placeholder:text-gray-600">
                     </div>
                 </div>
-                <div class="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide" id="filter-container"></div>
+                <div class="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+                    <button onclick="filterGrid('all')" class="px-5 py-2.5 rounded-xl text-xs font-bold uppercase border border-white/5 bg-[#0A0A0A] text-gray-400 hover:text-white cursor-pointer">All</button>
+                    <button onclick="filterGrid('element')" class="px-5 py-2.5 rounded-xl text-xs font-bold uppercase border border-white/5 bg-[#0A0A0A] text-gray-400 hover:text-white cursor-pointer">Elements</button>
+                    <button onclick="filterGrid('navigation')" class="px-5 py-2.5 rounded-xl text-xs font-bold uppercase border border-white/5 bg-[#0A0A0A] text-gray-400 hover:text-white cursor-pointer">Nav</button>
+                </div>
             </div>
         </div>
 
         <div id="components-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 min-h-[300px]">
-            <div class="glass-card rounded-2xl h-80 flex flex-col p-6 animate-pulse">
-                <div class="h-40 w-full rounded-xl skeleton mb-4"></div>
-                <div class="h-6 w-3/4 rounded-md skeleton mb-2"></div>
-                <div class="h-4 w-1/2 rounded-md skeleton"></div>
             </div>
-        </div>
+
     </main>
 
     <footer class="border-t border-white/5 bg-[#010101] py-12 relative z-10">
@@ -111,12 +106,24 @@
         </div>
     </footer>
 
-    <div id="upload-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
-        <div class="absolute inset-0 bg-black/80 backdrop-blur-md" onclick="toggleModal('upload-modal', false)"></div>
-        <div class="glass-card w-full max-w-2xl rounded-3xl p-8 relative transform scale-95 transition-transform duration-300 shadow-2xl shadow-purple-900/20">
-            <button onclick="toggleModal('upload-modal', false)" class="absolute top-6 right-6 text-gray-500 hover:text-white cursor-pointer z-50"><i data-lucide="x"></i></button>
+    <div id="login-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md cursor-pointer" onclick="closeModal('login-modal')"></div>
+        <div class="glass-card w-full max-w-sm rounded-3xl p-8 relative text-center z-10">
+            <button onclick="closeModal('login-modal')" class="absolute top-4 right-4 text-gray-500 hover:text-white cursor-pointer"><i data-lucide="x"></i></button>
+            <h2 class="text-3xl font-bold mb-2">Access Nyx</h2>
+            <p class="text-gray-500 text-sm mb-8">Sign in to the registry.</p>
+            <button onclick="startGithubAuth()" class="w-full bg-white text-black font-bold py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-gray-200 transition-colors cursor-pointer">
+                <i data-lucide="github" class="w-5 h-5"></i> Continue with GitHub
+            </button>
+        </div>
+    </div>
+
+    <div id="upload-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md cursor-pointer" onclick="closeModal('upload-modal')"></div>
+        <div class="glass-card w-full max-w-2xl rounded-3xl p-8 relative z-10">
+            <button onclick="closeModal('upload-modal')" class="absolute top-6 right-6 text-gray-500 hover:text-white cursor-pointer"><i data-lucide="x"></i></button>
             <h2 class="text-2xl font-bold text-white mb-6">Upload Component</h2>
-            <form id="upload-form" class="space-y-5">
+            <form id="upload-form" class="space-y-5" onsubmit="handleUpload(event)">
                 <div class="grid grid-cols-2 gap-5">
                     <input type="text" id="comp-title" required placeholder="Title" class="w-full bg-[#050505] border border-white/10 rounded-xl p-3 text-sm focus:border-purple-500 outline-none text-white">
                     <select id="comp-type" class="w-full bg-[#050505] border border-white/10 rounded-xl p-3 text-sm focus:border-purple-500 outline-none text-gray-300">
@@ -131,122 +138,74 @@
         </div>
     </div>
 
-    <div id="login-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
-        <div class="absolute inset-0 bg-black/80 backdrop-blur-md" onclick="toggleModal('login-modal', false)"></div>
-        <div class="glass-card w-full max-w-sm rounded-3xl p-8 relative text-center transform scale-95 transition-transform duration-300">
-            <button onclick="toggleModal('login-modal', false)" class="absolute top-4 right-4 text-gray-500 hover:text-white cursor-pointer z-50"><i data-lucide="x"></i></button>
-            <h2 class="text-3xl font-bold mb-8">Access Nyx</h2>
-            <button onclick="signInWithGithub()" class="w-full bg-white text-black font-bold py-4 rounded-xl flex items-center justify-center gap-3 cursor-pointer hover:bg-gray-200 transition-colors"><i data-lucide="github" class="w-5 h-5"></i> Continue with GitHub</button>
-        </div>
-    </div>
-
     <div id="toast" class="fixed bottom-6 right-6 bg-[#0A0A0A] border border-white/10 text-white px-6 py-4 rounded-xl shadow-2xl translate-y-32 transition-transform duration-300 z-[150] flex items-center gap-4">
         <div class="p-2 bg-green-500/20 rounded-lg text-green-500"><i data-lucide="check" class="w-5 h-5"></i></div>
         <div><h4 class="font-bold text-sm" id="toast-title">Success</h4><p class="text-xs text-gray-500" id="toast-msg">Action completed</p></div>
     </div>
 
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>
         // ==========================================
-        // ⚡ SAFE CONFIGURATION
+        // ⚡ ROBUST LOGIC (No Crash Guarantee)
         // ==========================================
         const SUPABASE_URL = '__SUPABASE_URL__'; 
         const SUPABASE_KEY = '__SUPABASE_KEY__';
 
         let supabase = null;
-        let isDemoMode = true;
+        let isDemo = true;
+        let user = null;
 
-        // Try initializing Supabase safely
+        // 1. Safe Initialization
         try {
             if (SUPABASE_URL.startsWith('https')) {
                 supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                isDemoMode = false;
+                isDemo = false;
+                console.log("NyxUI: Connected to Supabase");
             } else {
-                console.log("NyxUI: Running in Demo Mode (No Keys)");
+                console.warn("NyxUI: Demo Mode (Keys missing)");
             }
         } catch (e) {
-            console.log("NyxUI: Init failed, defaulting to Demo Mode.");
+            console.error("NyxUI: Init Error", e);
         }
 
-        let user = null;
-        let activeFilter = 'all';
-
-        // --- MOCK DATA ---
+        // 2. Demo Data (Always available)
         const DEMO_DATA = [
             { id: 1, title: 'Neon Button', type: 'element', code: '<button class="px-6 py-3 bg-black text-white rounded-lg border border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]">Click Me</button>', profiles: { username: 'NyxCore' } },
             { id: 2, title: 'Glass Card', type: 'element', code: '<div class="p-6 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 text-white">Glassmorphism</div>', profiles: { username: 'Fahad' } },
+            { id: 3, title: 'Gradient Text', type: 'text', code: '<h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-violet-500">Hello World</h1>', profiles: { username: 'Dev' } },
         ];
 
-        async function init() {
-            AOS.init({ once: true, duration: 1000, offset: 50 });
+        let currentData = [...DEMO_DATA];
+
+        // 3. Main Logic
+        window.addEventListener('DOMContentLoaded', async () => {
             lucide.createIcons();
             initParticles();
-
-            // 1. Auth Check
-            if (!isDemoMode && supabase) {
-                try {
-                    const { data } = await supabase.auth.getSession();
-                    user = data.session?.user || null;
-                    
-                    supabase.auth.onAuthStateChange((_e, session) => {
-                        user = session?.user || null;
-                        renderAuth();
-                    });
-                } catch(e) { console.log("Auth skipped"); }
-            }
             
-            renderAuth();
-            fetchData();
-        }
+            // Render initial grid immediately (don't wait for DB)
+            renderGrid(DEMO_DATA);
 
-        function renderAuth() {
-            const container = document.getElementById('auth-container');
-            if(user) {
-                container.innerHTML = `<button onclick="toggleModal('upload-modal', true)" class="hidden md:flex items-center gap-2 bg-purple-600/10 border border-purple-500/20 hover:bg-purple-600 hover:border-purple-500 text-purple-300 hover:text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer"><i data-lucide="plus" class="w-4 h-4"></i> Create</button>`;
-            } else {
-                // If demo mode, clicking Sign In shows alert
-                container.innerHTML = `<button onclick="handleAuthClick()" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform cursor-pointer">Sign In</button>`;
+            // Try real fetch if not demo
+            if (!isDemo && supabase) {
+                checkAuth();
+                fetchRealData();
             }
-            lucide.createIcons();
-        }
+        });
 
-        function handleAuthClick() {
-            if (isDemoMode) {
-                alert("You are in Demo Mode. Connect Vercel Keys to Sign In.");
-            } else {
-                toggleModal('login-modal', true);
-            }
-        }
-
-        async function fetchData() {
-            const grid = document.getElementById('components-grid');
-            
-            if(isDemoMode) {
-                renderGrid(DEMO_DATA);
-                return;
-            }
-
+        // 4. Data Functions
+        async function fetchRealData() {
             try {
-                let query = supabase.from('components').select('*, profiles(username, avatar_url)').order('created_at', { ascending: false });
-                if (activeFilter !== 'all') query = query.eq('type', activeFilter);
-                const { data, error } = await query;
-                
-                if (error || !data) throw new Error("DB Error");
-                renderGrid(data.length > 0 ? data : []);
-            } catch (err) {
-                renderGrid(DEMO_DATA); // Fallback
-            }
+                const { data, error } = await supabase.from('components').select('*, profiles(username, avatar_url)').order('created_at', { ascending: false });
+                if (!error && data.length > 0) {
+                    currentData = data;
+                    renderGrid(currentData);
+                }
+            } catch (e) { console.log("Fetch error, keeping demo data"); }
         }
 
         function renderGrid(data) {
             const grid = document.getElementById('components-grid');
-            if (data.length === 0) {
-                grid.innerHTML = `<div class="col-span-full text-center py-20 text-gray-500">No components found.</div>`;
-                return;
-            }
-
             grid.innerHTML = data.map((item, i) => `
-                <div class="glass-card rounded-2xl overflow-hidden flex flex-col group" data-aos="fade-up" data-aos-delay="${i * 50}">
+                <div class="glass-card rounded-2xl overflow-hidden flex flex-col group opacity-0 animate-fade-in" style="animation: fadeIn 0.5s ease forwards ${i * 0.1}s">
                     <div class="h-52 bg-[#050505] relative flex items-center justify-center p-6 border-b border-white/5 overflow-hidden">
                         <div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(#333 1px, transparent 1px); background-size: 16px 16px;"></div>
                         <div class="relative z-10 transform transition-transform duration-500 group-hover:scale-110">${item.code}</div>
@@ -270,27 +229,53 @@
             lucide.createIcons();
         }
 
-        async function signInWithGithub() { 
-            if(isDemoMode) return;
-            await supabase.auth.signInWithOAuth({ provider: 'github' }); 
-        }
-
-        // --- UTILS ---
-        function toggleModal(id, show) {
-            const el = document.getElementById(id);
-            if(show) { 
-                el.classList.remove('opacity-0', 'pointer-events-none'); 
-                el.querySelector('.glass-card').classList.add('scale-100'); 
-            } else { 
-                el.classList.add('opacity-0', 'pointer-events-none'); 
-                el.querySelector('.glass-card').classList.remove('scale-100'); 
+        function filterGrid(type) {
+            if (type === 'all') {
+                renderGrid(currentData);
+            } else {
+                renderGrid(currentData.filter(d => d.type === type));
             }
         }
-        function copyCode(code) { 
-            navigator.clipboard.writeText(decodeURIComponent(code));
-            showToast("Success", "Code copied to clipboard");
+
+        // 5. Auth Functions
+        async function checkAuth() {
+            const { data } = await supabase.auth.getSession();
+            user = data.session?.user || null;
+            updateAuthUI();
         }
+
+        function updateAuthUI() {
+            const container = document.getElementById('auth-container');
+            if (user) {
+                container.innerHTML = `<button onclick="openModal('upload-modal')" class="bg-purple-600/10 border border-purple-500/20 text-purple-300 hover:text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer">Create</button>`;
+            } else {
+                container.innerHTML = `<button onclick="openModal('login-modal')" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform cursor-pointer">Sign In</button>`;
+            }
+        }
+
+        async function startGithubAuth() {
+            if (isDemo) { alert("This is a demo. Configure Vercel keys to login."); return; }
+            await supabase.auth.signInWithOAuth({ provider: 'github' });
+        }
+
+        async function handleUpload(e) {
+            e.preventDefault();
+            if (isDemo || !user) { alert("Please login to upload (Demo Mode)."); return; }
+            
+            // Real upload logic would go here
+            showToast("Success", "Component Uploaded!");
+            closeModal('upload-modal');
+        }
+
+        // 6. UI Utils
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
         
+        function copyCode(code) {
+            navigator.clipboard.writeText(decodeURIComponent(code));
+            showToast("Copied", "Code in clipboard");
+        }
+
         function showToast(title, msg) {
             const t = document.getElementById('toast');
             document.getElementById('toast-title').innerText = title;
@@ -299,14 +284,14 @@
             setTimeout(() => t.classList.add('translate-y-32'), 3000);
         }
 
-        // --- PARTICLES ---
+        // 7. Background Particles
         function initParticles() {
             const canvas = document.getElementById('neural-canvas');
             const ctx = canvas.getContext('2d');
             let w, h, p = [];
             const resize = () => { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; };
             window.addEventListener('resize', resize); resize();
-            for(let i=0; i<80; i++) p.push({x:Math.random()*w, y:Math.random()*h, vx:(Math.random()-.5)*.5, vy:(Math.random()-.5)*.5, s:Math.random()*1.5+.5});
+            for(let i=0; i<60; i++) p.push({x:Math.random()*w, y:Math.random()*h, vx:(Math.random()-.5)*.5, vy:(Math.random()-.5)*.5, s:Math.random()*1.5+.5});
             function animate() {
                 ctx.clearRect(0,0,w,h);
                 p.forEach((pt, i) => {
@@ -322,11 +307,13 @@
             animate();
         }
 
-        const filters = ['all', 'element', 'navigation', 'loader'];
-        document.getElementById('filter-container').innerHTML = filters.map(f => `<button onclick="activeFilter='${f}';fetchData()" class="px-5 py-2.5 rounded-xl text-xs font-bold uppercase transition-all border border-white/5 bg-[#0A0A0A] text-gray-500 hover:text-white hover:border-purple-500/50 cursor-pointer">${f}</button>`).join('');
-        document.getElementById('search-input').addEventListener('input', fetchData);
-        
-        init();
+        // CSS Animation Keyframes injection
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+            .animate-fade-in { animation-fill-mode: forwards; }
+        `;
+        document.head.appendChild(styleSheet);
     </script>
 </body>
 </html>
