@@ -55,9 +55,27 @@
         /* Syntax Highlighting Mockup */
         .code-preview { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
         
-        /* Loading Animation */
-        .loader-spin { animation: spin 1s linear infinite; }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
+        /* Custom Loader Animation */
+        .loader-ring {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+        }
+        .loader-ring:after {
+            content: " ";
+            display: block;
+            width: 32px;
+            height: 32px;
+            margin: 4px;
+            border-radius: 50%;
+            border: 3px solid #a855f7;
+            border-color: #a855f7 transparent #a855f7 transparent;
+            animation: ring 1.2s linear infinite;
+        }
+        @keyframes ring {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -80,7 +98,7 @@
 
             <div class="flex items-center gap-4">
                 <div id="auth-container" class="flex items-center gap-3">
-                    <button class="bg-white/10 h-9 w-20 rounded animate-pulse"></button>
+                    <div class="h-9 w-24 bg-white/5 rounded-lg animate-pulse"></div>
                 </div>
             </div>
         </div>
@@ -94,7 +112,7 @@
                   <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
                   <span class="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
                 </span>
-                Live Database Connected
+                Community Powered Library
             </div>
             <h1 class="text-5xl md:text-7xl font-black mb-6 tracking-tight">
                 Build. Share. <br class="hidden md:block" />
@@ -112,10 +130,9 @@
             </div>
         </div>
 
-        <div id="components-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div class="col-span-full text-center py-20 text-gray-500">
-                <i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto mb-4"></i>
-                <p>Connecting to Supabase...</p>
+        <div id="components-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 min-h-[200px]">
+            <div class="col-span-full flex justify-center items-center py-20">
+                <div class="loader-ring"></div>
             </div>
         </div>
 
@@ -172,17 +189,9 @@
     <script>
         // ==========================================
         // 🔒 CONFIGURATION
-        // Replace these with your Vercel Environment Variables 
-        // OR paste them here manually before deploying (Don't commit to GitHub!)
         // ==========================================
-        const SUPABASE_URL = 'INSERT_YOUR_SUPABASE_URL_HERE'; 
-        const SUPABASE_KEY = 'INSERT_YOUR_SUPABASE_ANON_KEY_HERE';
-
-        // Check if keys are set
-        if (SUPABASE_URL === 'INSERT_YOUR_SUPABASE_URL_HERE') {
-            console.warn("⚠️ Supabase Keys missing! The app will not connect.");
-            document.querySelector('#components-grid p').innerText = "Database connection missing.";
-        }
+        const SUPABASE_URL = 'INSERT_YOUR_URL_HERE'; 
+        const SUPABASE_KEY = 'INSERT_YOUR_PUBLISHABLE_KEY_HERE';
 
         // Initialize Supabase
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -252,6 +261,11 @@
             const grid = document.getElementById('components-grid');
             const search = document.getElementById('search-input').value;
             
+            // Show Loader if refreshing manually
+            if(!grid.querySelector('.loader-ring')) {
+                grid.innerHTML = `<div class="col-span-full flex justify-center items-center py-20"><div class="loader-ring"></div></div>`;
+            }
+
             let query = supabase.from('components').select('*, profiles(username, avatar_url)').order('created_at', { ascending: false });
             
             if (activeFilter !== 'all') query = query.eq('type', activeFilter);
@@ -261,6 +275,8 @@
             
             if (error) {
                 console.error(error);
+                // On error, create an empty state but log connection issue
+                grid.innerHTML = `<div class="col-span-full text-center text-gray-500 py-10">Unable to load registry. Check console.</div>`;
                 return;
             }
 
@@ -394,7 +410,6 @@
             const el = document.getElementById(id);
             if(show) {
                 el.classList.remove('hidden');
-                // Small delay for fade in
                 setTimeout(() => el.classList.remove('opacity-0'), 10);
             } else {
                 el.classList.add('hidden');
