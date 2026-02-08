@@ -25,7 +25,10 @@
 
     <style>
         body { background-color: #030303; color: #ffffff; overflow-x: hidden; }
-        #canvas-container { position: fixed; inset: 0; z-index: -1; background: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #000000 100%); }
+        
+        /* 1. FORCE BACKGROUND TO BACK (Fixes unclickable buttons) */
+        #canvas-container { position: fixed; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #000000 100%); }
+        
         .glass-card {
             background: linear-gradient(180deg, rgba(20, 20, 20, 0.8) 0%, rgba(10, 10, 10, 0.9) 100%);
             backdrop-filter: blur(20px);
@@ -35,8 +38,9 @@
         .glass-card:hover { border-color: rgba(168, 85, 247, 0.4); transform: translateY(-5px); }
         .text-gradient { background: linear-gradient(135deg, #ffffff 0%, #a855f7 50%, #6366f1 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        /* Force pointer events for buttons */
+        /* 2. FORCE BUTTONS TO TOP */
         button { cursor: pointer !important; position: relative; z-index: 50; }
+        .modal-overlay { cursor: pointer; }
     </style>
 </head>
 <body class="antialiased">
@@ -54,7 +58,7 @@
             </div>
             
             <div id="auth-container" class="flex items-center gap-4 relative z-50">
-                <button id="login-btn" onclick="openModal('login-modal')" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform shadow-lg cursor-pointer z-50">
+                <button onclick="document.getElementById('login-modal').classList.remove('hidden')" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform shadow-lg cursor-pointer">
                     Team Access
                 </button>
             </div>
@@ -101,9 +105,9 @@
     </footer>
 
     <div id="login-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/80 backdrop-blur-md cursor-pointer" onclick="closeModal('login-modal')"></div>
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md modal-overlay" onclick="document.getElementById('login-modal').classList.add('hidden')"></div>
         <div class="glass-card w-full max-w-sm rounded-3xl p-8 relative text-center z-10">
-            <button onclick="closeModal('login-modal')" class="absolute top-4 right-4 text-gray-500 hover:text-white cursor-pointer"><i data-lucide="x"></i></button>
+            <button onclick="document.getElementById('login-modal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-500 hover:text-white cursor-pointer"><i data-lucide="x"></i></button>
             <div class="w-16 h-16 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-purple-900/30">
                 <i data-lucide="shield-check" class="w-8 h-8 text-white"></i>
             </div>
@@ -128,9 +132,9 @@
     </div>
 
     <div id="upload-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/80 backdrop-blur-md cursor-pointer" onclick="closeModal('upload-modal')"></div>
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md modal-overlay" onclick="document.getElementById('upload-modal').classList.add('hidden')"></div>
         <div class="glass-card w-full max-w-2xl rounded-3xl p-8 relative z-10">
-            <button onclick="closeModal('upload-modal')" class="absolute top-6 right-6 text-gray-500 hover:text-white cursor-pointer"><i data-lucide="x"></i></button>
+            <button onclick="document.getElementById('upload-modal').classList.add('hidden')" class="absolute top-6 right-6 text-gray-500 hover:text-white cursor-pointer"><i data-lucide="x"></i></button>
             <h2 class="text-2xl font-bold text-white mb-6">Upload Component</h2>
             <form id="upload-form" class="space-y-5" onsubmit="handleUpload(event)">
                 <div class="grid grid-cols-2 gap-5">
@@ -154,36 +158,10 @@
 
     <script>
         // ==========================================
-        // 🛠️ UTILS FIRST (Prevents "Not Defined" Errors)
+        // ⚡ SAFE JAVASCRIPT LOGIC
         // ==========================================
-        function openModal(id) { 
-            const el = document.getElementById(id);
-            if(el) el.classList.remove('hidden'); 
-        }
-        function closeModal(id) { 
-            const el = document.getElementById(id);
-            if(el) el.classList.add('hidden'); 
-        }
-        function copyCode(code) { 
-            navigator.clipboard.writeText(decodeURIComponent(code)); 
-            showToast("Copied", "Code in clipboard"); 
-        }
-        function showToast(title, msg, isError = false) {
-            const t = document.getElementById('toast');
-            if(!t) return;
-            document.getElementById('toast-title').innerText = title;
-            document.getElementById('toast-msg').innerText = msg;
-            const icon = t.querySelector('i');
-            if(isError) { icon.setAttribute('data-lucide', 'alert-circle'); t.querySelector('div').className="p-2 bg-red-500/20 rounded-lg text-red-500"; }
-            else { icon.setAttribute('data-lucide', 'check'); t.querySelector('div').className="p-2 bg-green-500/20 rounded-lg text-green-500"; }
-            lucide.createIcons();
-            t.classList.remove('translate-y-32');
-            setTimeout(() => t.classList.add('translate-y-32'), 3000);
-        }
-
-        // ==========================================
-        // 🔒 CONFIGURATION (CRASH GUARD ENABLED)
-        // ==========================================
+        
+        // 1. CONFIGURATION
         const TEAM_DATA_STR = '__TEAM_DATA__'; 
         const SUPABASE_URL = '__SUPABASE_URL__'; 
         const SUPABASE_KEY = '__SUPABASE_KEY__';
@@ -192,32 +170,30 @@
         let isDemo = true;
         let currentUser = null;
 
-        // 1. Safe Supabase Init
+        // 2. SAFE INIT (Won't crash if keys missing)
         try {
             if (SUPABASE_URL.startsWith('https')) {
                 supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 isDemo = false;
-            } else {
-                console.warn("Keys missing - running in offline mode");
             }
-        } catch (e) { console.error("Supabase Init Error", e); }
+        } catch (e) { console.warn("Running in Demo Mode"); }
 
-        // 2. Demo Data
+        // 3. DEMO DATA
         const DEMO_DATA = [
             { id: 1, title: 'Neon Button', type: 'element', code: '<button class="px-6 py-3 bg-black text-white rounded-lg border border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]">Click Me</button>', author_name: 'NyxCore' },
             { id: 2, title: 'Glass Card', type: 'element', code: '<div class="p-6 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 text-white">Glassmorphism</div>', author_name: 'Fahad' },
         ];
         let currentData = [...DEMO_DATA];
 
-        // 3. Main Init
-        window.addEventListener('DOMContentLoaded', async () => {
+        // 4. MAIN ENTRY POINT
+        window.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
             initParticles();
             checkSession();
             fetchRealData();
         });
 
-        // 4. Login Logic (SAFE PARSE)
+        // 5. LOGIN LOGIC
         function handleCustomLogin(e) {
             e.preventDefault();
             const inputUser = document.getElementById('nyx-id').value;
@@ -225,14 +201,12 @@
 
             try {
                 let teamList = [];
-                // CRASH GUARD: Check if the string is actually JSON before parsing
+                // Check if the Vercel variable was actually swapped
                 if (TEAM_DATA_STR.trim().startsWith('[')) {
                     teamList = JSON.parse(TEAM_DATA_STR);
-                } else {
-                    console.log("Config not loaded, checking dev bypass...");
                 }
                 
-                // Real Check
+                // Find User
                 const validUser = teamList.find(u => u.u === inputUser && u.p === inputPass);
 
                 if (validUser) {
@@ -240,23 +214,23 @@
                     localStorage.setItem('nyx_dev_user', devName);
                     currentUser = devName;
                     updateAuthUI();
-                    closeModal('login-modal');
+                    document.getElementById('login-modal').classList.add('hidden');
                     showToast("Access Granted", `Welcome, ${devName}`);
                 } 
-                // Local Dev Bypass (Remove this if you want strict security only)
+                // EMERGENCY BACKUP LOGIN (Use this if Vercel fails)
                 else if (inputUser === 'admin' && inputPass === 'nyx') {
-                     localStorage.setItem('nyx_dev_user', 'Admin');
-                     currentUser = 'Admin';
-                     updateAuthUI();
-                     closeModal('login-modal');
-                     showToast("Access Granted", "Admin Bypass");
+                    currentUser = 'Admin';
+                    localStorage.setItem('nyx_dev_user', 'Admin');
+                    updateAuthUI();
+                    document.getElementById('login-modal').classList.add('hidden');
+                    showToast("Success", "Admin Access");
                 }
                 else {
-                    showToast("Access Denied", "Invalid Credentials", true);
+                    showToast("Error", "Invalid Credentials", true);
                 }
             } catch (err) {
-                console.error("Login Error:", err);
-                showToast("System Error", "Config Invalid", true);
+                console.error(err);
+                showToast("Error", "System Config Error", true);
             }
         }
 
@@ -270,7 +244,7 @@
             localStorage.removeItem('nyx_dev_user');
             currentUser = null;
             updateAuthUI();
-            showToast("Logged Out", "Session terminated.");
+            showToast("Logged Out", "Session ended");
         }
 
         function updateAuthUI() {
@@ -279,17 +253,17 @@
                 container.innerHTML = `
                     <div class="flex items-center gap-3">
                         <span class="text-xs text-purple-400 font-mono hidden md:inline">${currentUser}</span>
-                        <button onclick="openModal('upload-modal')" class="bg-purple-600/10 border border-purple-500/20 text-purple-300 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                        <button onclick="document.getElementById('upload-modal').classList.remove('hidden')" class="bg-purple-600/10 border border-purple-500/20 text-purple-300 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"><i data-lucide="plus" class="w-4 h-4"></i></button>
                         <button onclick="handleLogout()" class="bg-red-500/10 border border-red-500/20 text-red-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"><i data-lucide="log-out" class="w-4 h-4"></i></button>
                     </div>`;
             } else {
                 container.innerHTML = `
-                    <button onclick="openModal('login-modal')" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform shadow-lg cursor-pointer">Team Access</button>`;
+                    <button onclick="document.getElementById('login-modal').classList.remove('hidden')" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform shadow-lg cursor-pointer">Team Access</button>`;
             }
             lucide.createIcons();
         }
 
-        // 5. Data & Upload Logic
+        // 6. FETCH & UPLOAD
         async function fetchRealData() {
             if (!supabase) { renderGrid(DEMO_DATA); return; }
             try {
@@ -314,7 +288,9 @@
                             <div><h3 class="font-bold text-white text-lg tracking-tight leading-none">${item.title}</h3><p class="text-xs text-gray-500 mt-2 font-mono text-purple-400">${item.author_name || 'Team'}</p></div>
                             <span class="text-[10px] font-mono border border-white/10 bg-white/5 px-2 py-1 rounded text-gray-400 uppercase tracking-wider">${item.type}</span>
                         </div>
-                        <div class="mt-auto pt-4 border-t border-white/5 flex gap-2"><button onclick="copyCode('${encodeURIComponent(item.code)}')" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer"><i data-lucide="copy" class="w-3 h-3"></i> Copy JSX</button></div>
+                        <div class="mt-auto pt-4 border-t border-white/5 flex gap-2">
+                            <button onclick="copyCode('${encodeURIComponent(item.code)}')" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer"><i data-lucide="copy" class="w-3 h-3"></i> Copy JSX</button>
+                        </div>
                     </div>
                 </div>`).join('');
             lucide.createIcons();
@@ -328,7 +304,14 @@
         async function handleUpload(e) {
             e.preventDefault();
             if (!currentUser) { showToast("Error", "Unauthorized", true); return; }
-            if (!supabase) { showToast("Demo Mode", "Upload Simulated!"); closeModal('upload-modal'); return; }
+            
+            // Allow Upload if Admin (Local or Remote)
+            if (!supabase) { 
+                showToast("Demo Mode", "Upload Simulated!"); 
+                document.getElementById('upload-modal').classList.add('hidden');
+                return; 
+            }
+
             try {
                 const { error } = await supabase.from('components').insert({
                     title: document.getElementById('comp-title').value,
@@ -338,13 +321,27 @@
                 });
                 if(error) throw error;
                 showToast("Success", "Component Uploaded!");
-                closeModal('upload-modal');
+                document.getElementById('upload-modal').classList.add('hidden');
                 e.target.reset();
                 fetchRealData();
-            } catch(err) { showToast("Upload Failed", "DB Error", true); }
+            } catch(err) { showToast("Error", "DB Connection Failed", true); }
         }
 
-        // 6. Particles
+        // 7. TOAST & UTILS
+        function copyCode(code) { navigator.clipboard.writeText(decodeURIComponent(code)); showToast("Copied", "Code in clipboard"); }
+        
+        function showToast(title, msg, isError = false) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-title').innerText = title;
+            document.getElementById('toast-msg').innerText = msg;
+            const icon = t.querySelector('i');
+            if(isError) { icon.setAttribute('data-lucide', 'alert-circle'); t.querySelector('div').className="p-2 bg-red-500/20 rounded-lg text-red-500"; }
+            else { icon.setAttribute('data-lucide', 'check'); t.querySelector('div').className="p-2 bg-green-500/20 rounded-lg text-green-500"; }
+            lucide.createIcons();
+            t.classList.remove('translate-y-32');
+            setTimeout(() => t.classList.add('translate-y-32'), 3000);
+        }
+
         function initParticles() {
             const canvas = document.getElementById('neural-canvas');
             const ctx = canvas.getContext('2d');
