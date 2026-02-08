@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NYX UI | The Motion Registry</title>
+    <title>NYX UI | Private Registry</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -24,30 +25,21 @@
 
     <style>
         body { background-color: #030303; color: #ffffff; overflow-x: hidden; }
-        
-        /* Backgrounds */
         #canvas-container { position: fixed; inset: 0; z-index: -1; background: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #000000 100%); }
-        .vignette { position: fixed; inset: 0; z-index: -1; background: radial-gradient(circle at center, transparent 0%, #030303 120%); pointer-events: none; }
-        
-        /* Glass Card */
         .glass-card {
-            background: linear-gradient(180deg, rgba(20, 20, 20, 0.6) 0%, rgba(10, 10, 10, 0.8) 100%);
+            background: linear-gradient(180deg, rgba(20, 20, 20, 0.8) 0%, rgba(10, 10, 10, 0.9) 100%);
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.08);
             transition: all 0.3s ease;
         }
         .glass-card:hover { border-color: rgba(168, 85, 247, 0.4); transform: translateY(-5px); }
         .text-gradient { background: linear-gradient(135deg, #ffffff 0%, #a855f7 50%, #6366f1 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        
-        /* Utility */
-        .cursor-pointer { cursor: pointer !important; }
         .z-top { z-index: 9999 !important; }
     </style>
 </head>
 <body class="antialiased">
 
     <div id="canvas-container"><canvas id="neural-canvas"></canvas></div>
-    <div class="vignette"></div>
 
     <nav class="fixed w-full z-50 top-0 border-b border-white/5 bg-[#030303]/80 backdrop-blur-xl">
         <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
@@ -55,13 +47,13 @@
                 <div class="w-10 h-10 bg-gradient-to-br from-purple-600 to-indigo-700 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-inner border border-white/10">N</div>
                 <div>
                     <h1 class="font-bold text-lg tracking-tight leading-none text-white">NYX UI</h1>
-                    <p class="text-[10px] text-gray-500 font-mono uppercase tracking-[0.2em]">Registry</p>
+                    <p class="text-[10px] text-gray-500 font-mono uppercase tracking-[0.2em]">Internal</p>
                 </div>
             </div>
             
-            <div id="auth-container" class="flex items-center gap-4">
+            <div id="auth-container" class="flex items-center gap-4 relative z-50">
                 <button onclick="openModal('login-modal')" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform shadow-lg cursor-pointer">
-                    Sign In
+                    Team Access
                 </button>
             </div>
         </div>
@@ -72,12 +64,12 @@
         <div class="text-center mb-24 relative">
             <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-purple-500/30 bg-purple-500/5 text-purple-300 text-xs font-mono mb-8 backdrop-blur-md">
                 <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span></span>
-                Live Database V2.0
+                Private Registry V3.0
             </div>
 
             <h1 class="text-6xl md:text-8xl font-black mb-6 tracking-tight leading-tight">
                 Build. Share. <br class="hidden md:block" />
-                <span class="text-gradient filter drop-shadow-[0_0_30px_rgba(168,85,247,0.3)]">Animate.</span>
+                <span class="text-gradient">Animate.</span>
             </h1>
             
             <div class="max-w-4xl mx-auto flex flex-col md:flex-row gap-4 relative z-20">
@@ -90,7 +82,7 @@
                 <div class="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
                     <button onclick="filterGrid('all')" class="px-5 py-2.5 rounded-xl text-xs font-bold uppercase border border-white/5 bg-[#0A0A0A] text-gray-400 hover:text-white cursor-pointer">All</button>
                     <button onclick="filterGrid('element')" class="px-5 py-2.5 rounded-xl text-xs font-bold uppercase border border-white/5 bg-[#0A0A0A] text-gray-400 hover:text-white cursor-pointer">Elements</button>
-                    <button onclick="filterGrid('navigation')" class="px-5 py-2.5 rounded-xl text-xs font-bold uppercase border border-white/5 bg-[#0A0A0A] text-gray-400 hover:text-white cursor-pointer">Nav</button>
+                    <button onclick="filterGrid('loader')" class="px-5 py-2.5 rounded-xl text-xs font-bold uppercase border border-white/5 bg-[#0A0A0A] text-gray-400 hover:text-white cursor-pointer">Loaders</button>
                 </div>
             </div>
         </div>
@@ -110,11 +102,29 @@
         <div class="absolute inset-0 bg-black/80 backdrop-blur-md cursor-pointer" onclick="closeModal('login-modal')"></div>
         <div class="glass-card w-full max-w-sm rounded-3xl p-8 relative text-center z-10">
             <button onclick="closeModal('login-modal')" class="absolute top-4 right-4 text-gray-500 hover:text-white cursor-pointer"><i data-lucide="x"></i></button>
-            <h2 class="text-3xl font-bold mb-2">Access Nyx</h2>
-            <p class="text-gray-500 text-sm mb-8">Sign in to the registry.</p>
-            <button onclick="startGithubAuth()" class="w-full bg-white text-black font-bold py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-gray-200 transition-colors cursor-pointer">
-                <i data-lucide="github" class="w-5 h-5"></i> Continue with GitHub
-            </button>
+            
+            <div class="w-16 h-16 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-purple-900/30">
+                <i data-lucide="shield-check" class="w-8 h-8 text-white"></i>
+            </div>
+
+            <h2 class="text-2xl font-bold mb-2">Team Access</h2>
+            <p class="text-gray-500 text-xs mb-6 uppercase tracking-widest">Authorized Personnel Only</p>
+            
+            <form onsubmit="handleCustomLogin(event)" class="space-y-4">
+                <div class="text-left">
+                    <label class="text-[10px] uppercase font-bold text-gray-500 ml-1">NyX Mot ID</label>
+                    <input type="text" id="nyx-id" required placeholder="devXXXXXX@@</>" 
+                           class="w-full bg-[#050505] border border-white/10 rounded-xl p-3 text-sm focus:border-purple-500 outline-none text-white font-mono">
+                </div>
+                <div class="text-left">
+                    <label class="text-[10px] uppercase font-bold text-gray-500 ml-1">Passkey</label>
+                    <input type="password" id="nyx-pass" required placeholder="nyxXXisX..." 
+                           class="w-full bg-[#050505] border border-white/10 rounded-xl p-3 text-sm focus:border-purple-500 outline-none text-white font-mono">
+                </div>
+                <button type="submit" class="w-full bg-white text-black font-bold py-3 rounded-xl hover:scale-105 transition-transform cursor-pointer mt-2">
+                    Verify Identity
+                </button>
+            </form>
         </div>
     </div>
 
@@ -145,61 +155,133 @@
 
     <script>
         // ==========================================
-        // ⚡ ROBUST LOGIC (No Crash Guarantee)
+        // 🔒 CONFIGURATION
         // ==========================================
+        // Vercel swaps these automatically
+        const TEAM_DATA_STR = '__TEAM_DATA__'; 
         const SUPABASE_URL = '__SUPABASE_URL__'; 
         const SUPABASE_KEY = '__SUPABASE_KEY__';
 
         let supabase = null;
         let isDemo = true;
-        let user = null;
+        let currentUser = null; // Store currently logged in dev name
 
-        // 1. Safe Initialization
+        // 1. Initialize Supabase
         try {
             if (SUPABASE_URL.startsWith('https')) {
                 supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 isDemo = false;
-                console.log("NyxUI: Connected to Supabase");
-            } else {
-                console.warn("NyxUI: Demo Mode (Keys missing)");
             }
-        } catch (e) {
-            console.error("NyxUI: Init Error", e);
-        }
+        } catch (e) { console.error("Init Error"); }
 
-        // 2. Demo Data (Always available)
+        // 2. Demo Data
         const DEMO_DATA = [
-            { id: 1, title: 'Neon Button', type: 'element', code: '<button class="px-6 py-3 bg-black text-white rounded-lg border border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]">Click Me</button>', profiles: { username: 'NyxCore' } },
-            { id: 2, title: 'Glass Card', type: 'element', code: '<div class="p-6 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 text-white">Glassmorphism</div>', profiles: { username: 'Fahad' } },
-            { id: 3, title: 'Gradient Text', type: 'text', code: '<h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-violet-500">Hello World</h1>', profiles: { username: 'Dev' } },
+            { id: 1, title: 'Neon Button', type: 'element', code: '<button class="px-6 py-3 bg-black text-white rounded-lg border border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]">Click Me</button>', author_name: 'NyxCore' },
+            { id: 2, title: 'Glass Card', type: 'element', code: '<div class="p-6 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 text-white">Glassmorphism</div>', author_name: 'Fahad' },
         ];
-
         let currentData = [...DEMO_DATA];
 
-        // 3. Main Logic
+        // 3. Main Init
         window.addEventListener('DOMContentLoaded', async () => {
             lucide.createIcons();
             initParticles();
-            
-            // Render initial grid immediately (don't wait for DB)
-            renderGrid(DEMO_DATA);
-
-            // Try real fetch if not demo
-            if (!isDemo && supabase) {
-                checkAuth();
-                fetchRealData();
-            }
+            checkSession();
+            fetchRealData();
         });
 
-        // 4. Data Functions
-        async function fetchRealData() {
+        // 4. MULTI-USER LOGIN LOGIC
+        function handleCustomLogin(e) {
+            e.preventDefault();
+            const inputUser = document.getElementById('nyx-id').value;
+            const inputPass = document.getElementById('nyx-pass').value;
+
             try {
-                const { data, error } = await supabase.from('components').select('*, profiles(username, avatar_url)').order('created_at', { ascending: false });
+                // Parse the JSON list from Vercel
+                // If it wasn't replaced, it might be the string literal "__TEAM_DATA__"
+                let teamList = [];
+                if (TEAM_DATA_STR.startsWith('[')) {
+                    teamList = JSON.parse(TEAM_DATA_STR);
+                }
+                
+                // Find matching user
+                const validUser = teamList.find(u => u.u === inputUser && u.p === inputPass);
+
+                if (validUser) {
+                    const devName = validUser.u.split('@')[0];
+                    localStorage.setItem('nyx_dev_user', devName);
+                    
+                    currentUser = devName;
+                    updateAuthUI();
+                    closeModal('login-modal');
+                    showToast("Access Granted", `Welcome, ${devName}`);
+                } else {
+                    // Demo fallback for preview deployments without keys
+                    if (inputUser === 'admin' && inputPass === 'nyx') {
+                        currentUser = 'DemoAdmin';
+                        updateAuthUI();
+                        closeModal('login-modal');
+                    } else {
+                        showToast("Access Denied", "Invalid Credentials", true);
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                showToast("System Error", "Config Invalid", true);
+            }
+        }
+
+        function checkSession() {
+            const storedUser = localStorage.getItem('nyx_dev_user');
+            if (storedUser) {
+                currentUser = storedUser;
+            }
+            updateAuthUI();
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('nyx_dev_user');
+            currentUser = null;
+            updateAuthUI();
+            showToast("Logged Out", "Session terminated.");
+        }
+
+        function updateAuthUI() {
+            const container = document.getElementById('auth-container');
+            if (currentUser) {
+                container.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-purple-400 font-mono hidden md:inline">${currentUser}</span>
+                        <button onclick="openModal('upload-modal')" class="bg-purple-600/10 border border-purple-500/20 text-purple-300 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="handleLogout()" class="bg-red-500/10 border border-red-500/20 text-red-400 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer">
+                            <i data-lucide="log-out" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <button onclick="openModal('login-modal')" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform shadow-lg cursor-pointer">
+                        Team Access
+                    </button>
+                `;
+            }
+            lucide.createIcons();
+        }
+
+        // 5. Data Fetching
+        async function fetchRealData() {
+            if (!supabase) { renderGrid(DEMO_DATA); return; }
+            try {
+                // Fetch from Supabase
+                const { data, error } = await supabase.from('components').select('*').order('created_at', { ascending: false });
                 if (!error && data.length > 0) {
                     currentData = data;
                     renderGrid(currentData);
+                } else {
+                    renderGrid(DEMO_DATA);
                 }
-            } catch (e) { console.log("Fetch error, keeping demo data"); }
+            } catch (e) { renderGrid(DEMO_DATA); }
         }
 
         function renderGrid(data) {
@@ -214,9 +296,9 @@
                         <div class="flex justify-between items-start mb-4">
                             <div>
                                 <h3 class="font-bold text-white text-lg tracking-tight leading-none">${item.title}</h3>
-                                <p class="text-xs text-gray-500 mt-2">by ${item.profiles?.username || 'Anon'}</p>
+                                <p class="text-xs text-gray-500 mt-2 font-mono text-purple-400">${item.author_name || 'Team'}</p>
                             </div>
-                            <span class="text-[10px] font-mono border border-white/10 bg-white/5 px-2 py-1 rounded text-purple-400 uppercase tracking-wider">${item.type}</span>
+                            <span class="text-[10px] font-mono border border-white/10 bg-white/5 px-2 py-1 rounded text-gray-400 uppercase tracking-wider">${item.type}</span>
                         </div>
                         <div class="mt-auto pt-4 border-t border-white/5 flex gap-2">
                             <button onclick="copyCode('${encodeURIComponent(item.code)}')" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer">
@@ -230,61 +312,57 @@
         }
 
         function filterGrid(type) {
-            if (type === 'all') {
-                renderGrid(currentData);
-            } else {
-                renderGrid(currentData.filter(d => d.type === type));
-            }
+            if (type === 'all') renderGrid(currentData);
+            else renderGrid(currentData.filter(d => d.type === type));
         }
 
-        // 5. Auth Functions
-        async function checkAuth() {
-            const { data } = await supabase.auth.getSession();
-            user = data.session?.user || null;
-            updateAuthUI();
-        }
-
-        function updateAuthUI() {
-            const container = document.getElementById('auth-container');
-            if (user) {
-                container.innerHTML = `<button onclick="openModal('upload-modal')" class="bg-purple-600/10 border border-purple-500/20 text-purple-300 hover:text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer">Create</button>`;
-            } else {
-                container.innerHTML = `<button onclick="openModal('login-modal')" class="bg-white text-black px-6 py-2.5 rounded-xl text-sm font-bold hover:scale-105 transition-transform cursor-pointer">Sign In</button>`;
-            }
-        }
-
-        async function startGithubAuth() {
-            if (isDemo) { alert("This is a demo. Configure Vercel keys to login."); return; }
-            await supabase.auth.signInWithOAuth({ provider: 'github' });
-        }
-
+        // 6. Upload Logic
         async function handleUpload(e) {
             e.preventDefault();
-            if (isDemo || !user) { alert("Please login to upload (Demo Mode)."); return; }
+            if (!currentUser) { showToast("Error", "Unauthorized", true); return; }
             
-            // Real upload logic would go here
-            showToast("Success", "Component Uploaded!");
-            closeModal('upload-modal');
+            if (!supabase) {
+                // If in demo/local mode (no supabase), pretend it worked
+                showToast("Demo Mode", "Upload Simulated!");
+                closeModal('upload-modal');
+                return;
+            }
+
+            try {
+                const { error } = await supabase.from('components').insert({
+                    title: document.getElementById('comp-title').value,
+                    type: document.getElementById('comp-type').value,
+                    code: document.getElementById('comp-code').value,
+                    author_name: currentUser
+                });
+
+                if(error) throw error;
+                showToast("Success", "Component Uploaded!");
+                closeModal('upload-modal');
+                e.target.reset();
+                fetchRealData();
+            } catch(err) {
+                showToast("Upload Failed", "DB Error", true);
+            }
         }
 
-        // 6. UI Utils
+        // 7. Utils & Visuals
         function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function copyCode(code) { navigator.clipboard.writeText(decodeURIComponent(code)); showToast("Copied", "Code in clipboard"); }
         
-        function copyCode(code) {
-            navigator.clipboard.writeText(decodeURIComponent(code));
-            showToast("Copied", "Code in clipboard");
-        }
-
-        function showToast(title, msg) {
+        function showToast(title, msg, isError = false) {
             const t = document.getElementById('toast');
             document.getElementById('toast-title').innerText = title;
             document.getElementById('toast-msg').innerText = msg;
+            const icon = t.querySelector('i');
+            if(isError) { icon.setAttribute('data-lucide', 'alert-circle'); t.querySelector('div').className="p-2 bg-red-500/20 rounded-lg text-red-500"; }
+            else { icon.setAttribute('data-lucide', 'check'); t.querySelector('div').className="p-2 bg-green-500/20 rounded-lg text-green-500"; }
+            lucide.createIcons();
             t.classList.remove('translate-y-32');
             setTimeout(() => t.classList.add('translate-y-32'), 3000);
         }
 
-        // 7. Background Particles
         function initParticles() {
             const canvas = document.getElementById('neural-canvas');
             const ctx = canvas.getContext('2d');
@@ -307,12 +385,8 @@
             animate();
         }
 
-        // CSS Animation Keyframes injection
         const styleSheet = document.createElement("style");
-        styleSheet.innerText = `
-            @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-            .animate-fade-in { animation-fill-mode: forwards; }
-        `;
+        styleSheet.innerText = `@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } .animate-fade-in { animation-fill-mode: forwards; }`;
         document.head.appendChild(styleSheet);
     </script>
 </body>
