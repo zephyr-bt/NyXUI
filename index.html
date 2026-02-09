@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NyxUI Registry | Sovereign</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-jsx.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'] 
+                    },
+                    colors: {
+                        nyx: { bg: '#050507', sidebar: '#0B0B0E', border: 'rgba(255, 255, 255, 0.08)' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #050507; color: #fff; overflow-x: hidden; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #050507; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        
+        .prodex-grid {
+            position: fixed; inset: 0; background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            mask-image: radial-gradient(circle at 50% 0%, black 60%, transparent 100%);
+            z-index: -1; pointer-events: none;
+        }
+        
+        /* Interactive Card */
+        .comp-card {
+            background: #0B0B0E; border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px; overflow: hidden; transition: all 0.3s ease;
+        }
+        .comp-card:hover { border-color: rgba(249, 115, 22, 0.3); transform: translateY(-2px); }
+        
+        /* Preview Area */
+        .preview-area {
+            background-image: radial-gradient(#222 1px, transparent 1px);
+            background-size: 20px 20px; background-color: #08080A;
+        }
+        
+        /* Prism Overrides */
+        pre[class*="language-"] {
+            margin: 0 !important; border-radius: 0 !important; background: #08080A !important;
+            padding: 20px !important; font-size: 13px !important; border-top: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .editor-input {
+            font-family: 'JetBrains Mono', monospace;
+            background: #0F0F12;
+            color: #a9b7c6;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body class="antialiased h-screen flex flex-col md:flex-row overflow-hidden">
+
+    <div class="prodex-grid"></div>
+
+    <aside class="w-full md:w-64 bg-[#0B0B0E] border-r border-nyx-border flex flex-col shrink-0 z-20 md:h-full">
+        <div class="h-16 flex items-center gap-3 px-6 border-b border-nyx-border shrink-0">
+            <div class="w-8 h-8 bg-[#121216] rounded-lg flex items-center justify-center border border-white/10">
+                <div class="w-4 h-4 bg-orange-600 rounded-sm"></div>
+            </div>
+            <span class="font-bold text-lg tracking-tight">NyxUI <span class="text-[10px] text-gray-500 font-normal">FIRE</span></span>
+        </div>
+
+        <div class="p-4">
+            <div class="relative group">
+                <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-gray-500 group-focus-within:text-orange-400 transition"></i>
+                <input type="text" id="global-search" placeholder="Search registry..." 
+                       class="w-full bg-[#121216] border border-nyx-border rounded-lg py-2 pl-9 pr-4 text-sm text-white focus:border-orange-500/50 outline-none transition">
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-4 pb-4 space-y-6">
+            <div>
+                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 px-2">Library</h4>
+                <ul class="space-y-1">
+                    <li><button onclick="filterCategory('all')" class="cat-btn active w-full text-left px-2 py-1.5 rounded-md text-sm font-medium text-white bg-white/5">All Components</button></li>
+                    <li><button onclick="filterCategory('button')" class="cat-btn w-full text-left px-2 py-1.5 rounded-md text-sm text-gray-400 hover:text-white hover:bg-white/5">Buttons</button></li>
+                    <li><button onclick="filterCategory('input')" class="cat-btn w-full text-left px-2 py-1.5 rounded-md text-sm text-gray-400 hover:text-white hover:bg-white/5">Inputs</button></li>
+                    <li><button onclick="filterCategory('card')" class="cat-btn w-full text-left px-2 py-1.5 rounded-md text-sm text-gray-400 hover:text-white hover:bg-white/5">Cards</button></li>
+                    <li><button onclick="filterCategory('loader')" class="cat-btn w-full text-left px-2 py-1.5 rounded-md text-sm text-gray-400 hover:text-white hover:bg-white/5">Loaders</button></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-nyx-border bg-[#08080A]">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] font-bold text-gray-500 uppercase">Backend Status</span>
+                <span id="db-status-dot" class="w-2 h-2 rounded-full bg-red-500"></span>
+            </div>
+            <p id="db-status-text" class="text-xs text-gray-400">Connecting...</p>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <header class="h-16 border-b border-nyx-border flex items-center justify-between px-8 bg-[#050507]/80 backdrop-blur-md z-10 shrink-0">
+            <div class="flex items-center gap-2 text-sm text-gray-400">
+                <span>Components</span><i data-lucide="chevron-right" class="w-4 h-4"></i><span id="current-category" class="text-white font-medium">All</span>
+            </div>
+            
+            <button onclick="openModal()" id="upload-trigger-btn" class="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-orange-500 transition opacity-50 cursor-not-allowed" disabled>
+                <i data-lucide="cloud-off" class="w-4 h-4"></i> Config Required
+            </button>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8" id="scroll-container">
+            <div class="max-w-6xl mx-auto">
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-[#0B0B0E] border border-nyx-border p-4 rounded-xl flex items-center gap-4">
+                        <div class="p-3 bg-orange-500/10 rounded-lg text-orange-500"><i data-lucide="flame" class="w-5 h-5"></i></div>
+                        <div><p class="text-xs text-gray-500 uppercase">Backend</p><h3 class="text-xl font-bold">Firebase</h3></div>
+                    </div>
+                    <div class="bg-[#0B0B0E] border border-nyx-border p-4 rounded-xl flex items-center gap-4">
+                        <div class="p-3 bg-blue-500/10 rounded-lg text-blue-500"><i data-lucide="database" class="w-5 h-5"></i></div>
+                        <div><p class="text-xs text-gray-500 uppercase">Items</p><h3 id="stat-count" class="text-xl font-bold">0</h3></div>
+                    </div>
+                    <div class="bg-[#0B0B0E] border border-nyx-border p-4 rounded-xl flex items-center gap-4">
+                        <div class="p-3 bg-green-500/10 rounded-lg text-green-500"><i data-lucide="activity" class="w-5 h-5"></i></div>
+                        <div><p class="text-xs text-gray-500 uppercase">Status</p><h3 class="text-xl font-bold">Live</h3></div>
+                    </div>
+                </div>
+
+                <div id="component-grid" class="grid grid-cols-1 gap-10 pb-20">
+                    <div class="py-20 text-center">
+                        <i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto text-gray-600 mb-4"></i>
+                        <p class="text-gray-500">Connecting to NovaNexus...</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <div id="upload-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeModal()"></div>
+        <div class="bg-[#0B0B0E] w-full max-w-2xl rounded-2xl border border-white/10 flex flex-col relative z-10 shadow-2xl max-h-[90vh]">
+            <div class="p-5 border-b border-white/10 flex justify-between items-center">
+                <h2 class="text-lg font-bold">Add Component</h2>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            
+            <form id="upload-form" class="p-6 space-y-5 overflow-y-auto">
+                <div class="grid grid-cols-2 gap-5">
+                    <div>
+                        <label class="text-xs text-gray-500 font-bold mb-2 block">Component Title</label>
+                        <input type="text" id="comp-title" required placeholder="e.g. Neon Button" class="w-full bg-[#121216] border border-white/10 rounded-lg p-3 text-sm focus:border-orange-500 outline-none text-white transition">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 font-bold mb-2 block">Category</label>
+                        <select id="comp-type" class="w-full bg-[#121216] border border-white/10 rounded-lg p-3 text-sm focus:border-orange-500 outline-none text-gray-400 transition">
+                            <option value="button">Button</option>
+                            <option value="input">Input</option>
+                            <option value="card">Card</option>
+                            <option value="loader">Loader</option>
+                            <option value="nav">Navigation</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-xs text-gray-500 font-bold mb-2 block">Source Code (JSX/HTML)</label>
+                    <div class="relative">
+                        <textarea id="comp-code" required rows="10" placeholder="<button class='...'>...</button>" 
+                                  class="editor-input w-full rounded-lg p-4 border border-white/10 focus:border-orange-500 outline-none text-sm"></textarea>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2">
+                        <i data-lucide="upload-cloud" class="w-4 h-4"></i> Publish to Firebase
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-6 right-6 bg-[#121216] border border-white/10 text-white px-5 py-3 rounded-xl shadow-2xl translate-y-32 transition-transform duration-300 z-[100] flex items-center gap-3">
+        <div class="p-1 bg-green-500/20 rounded text-green-500"><i data-lucide="check" class="w-4 h-4"></i></div>
+        <span id="toast-msg" class="text-sm font-medium">Operation Successful</span>
+    </div>
+
+    <script>
+        // ======================================================
+        // 🔥 REAL FIREBASE CONFIGURATION
+        // ======================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBCLw0As7hB-B_ZeovtZ8oOWedXomY82qI",
+            authDomain: "novanexus-9ee9a.firebaseapp.com",
+            projectId: "novanexus-9ee9a",
+            storageBucket: "novanexus-9ee9a.firebasestorage.app",
+            messagingSenderId: "807572356674",
+            appId: "1:807572356674:web:8abe644cd432cf19aef7db"
+        };
+
+        let db = null;
+        let isConnected = false;
+        let allComponents = [];
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            lucide.createIcons();
+            
+            try {
+                // Initialize Firebase
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                isConnected = true;
+                updateConnectionUI(true);
+                fetchComponents();
+            } catch (e) {
+                console.error("Firebase Init Error:", e);
+                updateConnectionUI(false);
+            }
+        });
+
+        // 2. UI STATUS
+        function updateConnectionUI(status) {
+            const dot = document.getElementById('db-status-dot');
+            const text = document.getElementById('db-status-text');
+            const btn = document.getElementById('upload-trigger-btn');
+            
+            if(status) {
+                dot.classList.remove('bg-red-500'); dot.classList.add('bg-green-500', 'animate-pulse');
+                text.innerText = "Connected"; text.classList.replace('text-gray-400', 'text-green-400');
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.classList.add('bg-orange-600', 'hover:bg-orange-500');
+                btn.innerHTML = `<i data-lucide="plus" class="w-4 h-4"></i> New Component`;
+            } else {
+                dot.classList.add('bg-red-500');
+                text.innerText = "Error";
+                btn.disabled = true;
+            }
+            lucide.createIcons();
+        }
+
+        // 3. FETCH (Realtime Listener)
+        function fetchComponents() {
+            if(!db) return;
+            
+            // Listen for realtime updates
+            db.collection("components").orderBy("created_at", "desc").onSnapshot((snapshot) => {
+                allComponents = [];
+                snapshot.forEach((doc) => {
+                    allComponents.push({ id: doc.id, ...doc.data() });
+                });
+                
+                document.getElementById('stat-count').innerText = allComponents.length;
+                renderGrid(allComponents);
+            }, (error) => {
+                console.error("Error fetching docs: ", error);
+                // If permission denied or other error
+                if(error.code === 'permission-denied') {
+                    showToast("Error: Permission Denied. Check Firestore Rules.", true);
+                }
+            });
+        }
+
+        // 4. RENDER
+        function renderGrid(data) {
+            const grid = document.getElementById('component-grid');
+            
+            if(data.length === 0) {
+                grid.innerHTML = `
+                    <div class="py-20 text-center border border-dashed border-white/10 rounded-2xl">
+                        <p class="text-gray-500">Registry is empty. Use the button above to upload.</p>
+                    </div>`;
+                return;
+            }
+
+            grid.innerHTML = '';
+            data.forEach(comp => {
+                const el = document.createElement('div');
+                el.className = 'comp-card';
+                el.innerHTML = `
+                    <div class="px-6 py-4 border-b border-nyx-border flex justify-between items-center bg-[#0F0F12]">
+                        <div class="flex items-center gap-3">
+                            <span class="p-1.5 bg-white/5 rounded text-gray-400"><i data-lucide="box" class="w-4 h-4"></i></span>
+                            <h3 class="text-sm font-bold text-white">${comp.title}</h3>
+                        </div>
+                        <div class="flex bg-[#050507] rounded-lg p-1 border border-nyx-border">
+                            <button onclick="switchView('${comp.id}', 'prev')" id="btn-prev-${comp.id}" class="px-3 py-1 rounded text-xs font-medium bg-[#1F1F23] text-white shadow-sm">Preview</button>
+                            <button onclick="switchView('${comp.id}', 'code')" id="btn-code-${comp.id}" class="px-3 py-1 rounded text-xs font-medium text-gray-500 hover:text-white">Code</button>
+                        </div>
+                    </div>
+                    <div id="view-prev-${comp.id}" class="preview-area h-64 flex items-center justify-center border-b border-nyx-border relative overflow-hidden p-8">
+                        ${comp.code}
+                    </div>
+                    <div id="view-code-${comp.id}" class="hidden relative group bg-[#08080A]">
+                        <button onclick="copyCode(\`${encodeURIComponent(comp.code)}\`)" class="absolute top-3 right-3 p-2 bg-white/10 rounded-lg text-white opacity-0 group-hover:opacity-100 transition"><i data-lucide="copy" class="w-4 h-4"></i></button>
+                        <pre class="language-html"><code class="language-html">${escapeHtml(comp.code)}</code></pre>
+                    </div>
+                    <div class="px-6 py-3 bg-[#0B0B0E] flex justify-between items-center text-xs text-gray-500">
+                        <span>ID: ${comp.id.substring(0,8)}</span>
+                        <span class="uppercase font-bold tracking-wider text-orange-400">${comp.type}</span>
+                    </div>
+                `;
+                grid.appendChild(el);
+            });
+            Prism.highlightAll();
+            lucide.createIcons();
+        }
+
+        // 5. UPLOAD (Real Firestore)
+        document.getElementById('upload-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!isConnected) return;
+
+            const btn = e.target.querySelector('button');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Processing...`;
+            lucide.createIcons();
+
+            try {
+                await db.collection("components").add({
+                    title: document.getElementById('comp-title').value,
+                    type: document.getElementById('comp-type').value,
+                    code: document.getElementById('comp-code').value,
+                    created_at: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                showToast("Published Successfully");
+                closeModal();
+                e.target.reset();
+            } catch (error) {
+                console.error(error);
+                showToast("Error: " + error.message, true);
+            } finally {
+                btn.innerHTML = originalHTML;
+            }
+        });
+
+        // 6. UTILS
+        function openModal() { document.getElementById('upload-modal').classList.remove('hidden'); }
+        function closeModal() { document.getElementById('upload-modal').classList.add('hidden'); }
+        
+        function switchView(id, mode) {
+            const prev = document.getElementById(`view-prev-${id}`);
+            const code = document.getElementById(`view-code-${id}`);
+            const btnP = document.getElementById(`btn-prev-${id}`);
+            const btnC = document.getElementById(`btn-code-${id}`);
+            
+            if(mode === 'prev') {
+                prev.classList.remove('hidden'); code.classList.add('hidden');
+                btnP.classList.add('bg-[#1F1F23]', 'text-white'); btnP.classList.remove('text-gray-500');
+                btnC.classList.remove('bg-[#1F1F23]', 'text-white'); btnC.classList.add('text-gray-500');
+            } else {
+                code.classList.remove('hidden'); prev.classList.add('hidden');
+                btnC.classList.add('bg-[#1F1F23]', 'text-white'); btnC.classList.remove('text-gray-500');
+                btnP.classList.remove('bg-[#1F1F23]', 'text-white'); btnP.classList.add('text-gray-500');
+            }
+        }
+
+        function copyCode(code) {
+            navigator.clipboard.writeText(decodeURIComponent(code));
+            showToast("Copied to Clipboard");
+        }
+
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            const icon = t.querySelector('div');
+            if(isError) {
+                icon.className = "p-1 bg-red-500/20 rounded text-red-500";
+                icon.innerHTML = `<i data-lucide="alert-circle" class="w-4 h-4"></i>`;
+            } else {
+                icon.className = "p-1 bg-green-500/20 rounded text-green-500";
+                icon.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i>`;
+            }
+            lucide.createIcons();
+            t.classList.remove('translate-y-32');
+            setTimeout(() => t.classList.add('translate-y-32'), 3000);
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // Filtering & Search
+        function filterCategory(cat) {
+            document.getElementById('current-category').innerText = cat === 'all' ? 'All Components' : cat.charAt(0).toUpperCase() + cat.slice(1) + 's';
+            if(cat === 'all') {
+                renderGrid(allComponents);
+            } else {
+                renderGrid(allComponents.filter(c => c.type === cat));
+            }
+        }
+
+        document.getElementById('global-search').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = allComponents.filter(c => 
+                c.title.toLowerCase().includes(term) || 
+                c.code.toLowerCase().includes(term)
+            );
+            renderGrid(filtered);
+        });
+    </script>
+</body>
+</html>
